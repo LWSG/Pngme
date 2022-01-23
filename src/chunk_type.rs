@@ -4,32 +4,32 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
-struct ChunkType {
-    bytes: [u8; 4],
+pub struct ChunkType {
+    _data: [u8; 4],
 }
 
 impl ChunkType {
     pub fn bytes(&self) -> [u8; 4] {
-        self.bytes.clone()
+        self._data.clone()
     }
     pub fn is_valid(&self) -> bool {
-        self.bytes[0].is_ascii_alphabetic() &&
-            self.bytes[1].is_ascii_alphabetic() &&
-            self.bytes[2].is_ascii_alphabetic() &&
-            self.bytes[3].is_ascii_alphabetic() &&
+        self._data[0].is_ascii_alphabetic() &&
+            self._data[1].is_ascii_alphabetic() &&
+            self._data[2].is_ascii_alphabetic() &&
+            self._data[3].is_ascii_alphabetic() &&
             self.is_reserved_bit_valid()
     }
     pub fn is_critical(&self) -> bool {
-        self.bytes[0] & 32 == 0
+        self._data[0] & 32 == 0
     }
     pub fn is_public(&self) -> bool {
-        self.bytes[1] & 32 == 0
+        self._data[1] & 32 == 0
     }
     pub fn is_reserved_bit_valid(&self) -> bool {
-        self.bytes[2] & 32 == 0
+        self._data[2] & 32 == 0
     }
     pub fn is_safe_to_copy(&self) -> bool {
-        self.bytes[3] & 32 != 0
+        self._data[3] & 32 != 0
     }
 }
 
@@ -39,7 +39,7 @@ impl TryFrom<[u8; 4]> for ChunkType {
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         Ok(
-            ChunkType { bytes: value }
+            ChunkType { _data: value }
         )
     }
 }
@@ -55,7 +55,7 @@ impl FromStr for ChunkType {
                 s.as_bytes()[2].is_ascii_alphabetic() && s.as_bytes()[3].is_ascii_alphabetic() {
                 Ok(
                     ChunkType {
-                        bytes: [s.as_bytes()[0], s.as_bytes()[1], s.as_bytes()[2], s.as_bytes()[3]]
+                        _data: [s.as_bytes()[0], s.as_bytes()[1], s.as_bytes()[2], s.as_bytes()[3]]
                     }
                 )
             } else {
@@ -68,19 +68,19 @@ impl FromStr for ChunkType {
 impl fmt::Display for ChunkType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}{}{}",
-               self.bytes[0] as char,
-               self.bytes[1] as char,
-               self.bytes[2] as char,
-               self.bytes[3] as char)
+               self._data[0] as char,
+               self._data[1] as char,
+               self._data[2] as char,
+               self._data[3] as char)
     }
 }
 
 impl PartialEq for ChunkType {
     fn eq(&self, other: &Self) -> bool {
-        self.bytes[0] & 32 == other.bytes[0] & 32 &&
-            self.bytes[1] & 32 == other.bytes[1] & 32 &&
-            self.bytes[2] & 32 == other.bytes[2] & 32 &&
-            self.bytes[3] & 32 == other.bytes[3] & 32
+        self._data[0] & 32 == other._data[0] & 32 &&
+            self._data[1] & 32 == other._data[1] & 32 &&
+            self._data[2] & 32 == other._data[2] & 32 &&
+            self._data[3] & 32 == other._data[3] & 32
     }
 }
 
