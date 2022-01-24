@@ -1,7 +1,7 @@
+use anyhow::{anyhow, Result};
 use core::fmt;
 use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
-use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
 pub struct ChunkType {
@@ -13,11 +13,11 @@ impl ChunkType {
         self._data.clone()
     }
     pub fn is_valid(&self) -> bool {
-        self._data[0].is_ascii_alphabetic() &&
-            self._data[1].is_ascii_alphabetic() &&
-            self._data[2].is_ascii_alphabetic() &&
-            self._data[3].is_ascii_alphabetic() &&
-            self.is_reserved_bit_valid()
+        self._data[0].is_ascii_alphabetic()
+            && self._data[1].is_ascii_alphabetic()
+            && self._data[2].is_ascii_alphabetic()
+            && self._data[3].is_ascii_alphabetic()
+            && self.is_reserved_bit_valid()
     }
     pub fn is_critical(&self) -> bool {
         self._data[0] & 32 == 0
@@ -33,14 +33,11 @@ impl ChunkType {
     }
 }
 
-
 impl TryFrom<[u8; 4]> for ChunkType {
     type Error = ();
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        Ok(
-            ChunkType { _data: value }
-        )
+        Ok(ChunkType { _data: value })
     }
 }
 
@@ -49,17 +46,26 @@ impl FromStr for ChunkType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() < 4 {
-            Err(anyhow!("Invalid Chunk Type String {} : Too Short",s))
+            Err(anyhow!("Invalid Chunk Type String {} : Too Short", s))
         } else {
-            if s.as_bytes()[0].is_ascii_alphabetic() && s.as_bytes()[1].is_ascii_alphabetic() &&
-                s.as_bytes()[2].is_ascii_alphabetic() && s.as_bytes()[3].is_ascii_alphabetic() {
-                Ok(
-                    ChunkType {
-                        _data: [s.as_bytes()[0], s.as_bytes()[1], s.as_bytes()[2], s.as_bytes()[3]]
-                    }
-                )
+            if s.as_bytes()[0].is_ascii_alphabetic()
+                && s.as_bytes()[1].is_ascii_alphabetic()
+                && s.as_bytes()[2].is_ascii_alphabetic()
+                && s.as_bytes()[3].is_ascii_alphabetic()
+            {
+                Ok(ChunkType {
+                    _data: [
+                        s.as_bytes()[0],
+                        s.as_bytes()[1],
+                        s.as_bytes()[2],
+                        s.as_bytes()[3],
+                    ],
+                })
             } else {
-                Err(anyhow!("Invalid Chunk Type String {} : Invalid Character",s))
+                Err(anyhow!(
+                    "Invalid Chunk Type String {} : Invalid Character",
+                    s
+                ))
             }
         }
     }
@@ -67,20 +73,23 @@ impl FromStr for ChunkType {
 
 impl fmt::Display for ChunkType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}{}",
-               self._data[0] as char,
-               self._data[1] as char,
-               self._data[2] as char,
-               self._data[3] as char)
+        write!(
+            f,
+            "{}{}{}{}",
+            self._data[0] as char,
+            self._data[1] as char,
+            self._data[2] as char,
+            self._data[3] as char
+        )
     }
 }
 
 impl PartialEq for ChunkType {
     fn eq(&self, other: &Self) -> bool {
-        self._data[0] & 32 == other._data[0] & 32 &&
-            self._data[1] & 32 == other._data[1] & 32 &&
-            self._data[2] & 32 == other._data[2] & 32 &&
-            self._data[3] & 32 == other._data[3] & 32
+        self._data[0] & 32 == other._data[0] & 32
+            && self._data[1] & 32 == other._data[1] & 32
+            && self._data[2] & 32 == other._data[2] & 32
+            && self._data[3] & 32 == other._data[3] & 32
     }
 }
 
@@ -182,4 +191,3 @@ mod tests {
         let _are_chunks_equal = chunk_type_1 == chunk_type_2;
     }
 }
-
