@@ -12,6 +12,14 @@ pub struct Chunk {
 }
 
 impl Chunk {
+    pub fn new(_type: ChunkType, _data: Vec<u8>) -> Self {
+        Chunk {
+            _length: (_data.len() + 4) as u32,
+            _type,
+            _crc: crc::Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(_data.as_ref()),
+            _data,
+        }
+    }
     pub fn length(&self) -> u32 {
         self._length
     }
@@ -43,15 +51,14 @@ impl TryFrom<&[u8]> for Chunk {
 
             let (r, c) = r.split_at(r.len() - 4);
 
-            let ce = crc::Crc::<u32>::new(&CRC_32_ISO_HDLC);
-            let crc_calc = ce.checksum(r);
+            let _crc = crc::Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(r);
 
-            if bytes_to_u32(c) != crc_calc {
+            if bytes_to_u32(c) != _crc {
                 Err(anyhow!(
                     "Invalid Chunk String {:?} : Wrong CRC {} , Should Be {}",
                     value,
                     bytes_to_u32(c),
-                    crc_calc
+                    _crc
                 ))
             } else {
                 let (t, d) = r.split_at(4);
@@ -60,7 +67,7 @@ impl TryFrom<&[u8]> for Chunk {
                     _length: bytes_to_u32(l),
                     _type: ChunkType::try_from(<[u8; 4]>::try_from(t)?).unwrap(),
                     _data: d.to_vec(),
-                    _crc: crc_calc,
+                    _crc,
                 })
             }
         }
