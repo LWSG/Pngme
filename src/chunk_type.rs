@@ -10,7 +10,7 @@ pub struct ChunkType {
 
 impl ChunkType {
     pub fn bytes(&self) -> [u8; 4] {
-        self._data.clone()
+        self._data
     }
     pub fn is_valid(&self) -> bool {
         self._data[0].is_ascii_alphabetic()

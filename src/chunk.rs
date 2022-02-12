@@ -13,12 +13,17 @@ pub struct Chunk {
 
 impl Chunk {
     pub fn new(_type: ChunkType, _data: Vec<u8>) -> Self {
-        Chunk {
-            _length: (_data.len() + 4) as u32,
+        let mut c = Chunk {
+            _length: _data.len() as u32,
+            _crc: 0,
             _type,
-            _crc: crc::Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(_data.as_ref()),
             _data,
-        }
+        };
+        let rest = c.as_bytes();
+        let (_, rest) = rest.split_at(4);
+        let (rest, _) = rest.split_at(rest.len() - 4);
+        c._crc = crc::Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(rest);
+        c
     }
     pub fn length(&self) -> u32 {
         self._length
@@ -36,7 +41,14 @@ impl Chunk {
         String::from_utf8(self._data.clone())
     }
     pub fn as_bytes(&self) -> Vec<u8> {
-        self._data.clone()
+        self._length
+            .to_be_bytes()
+            .iter()
+            .cloned()
+            .chain(self._type.bytes().iter().cloned())
+            .chain(self._data.iter().cloned())
+            .chain(self._crc.to_be_bytes().iter().cloned())
+            .collect()
     }
 }
 
@@ -47,26 +59,28 @@ impl TryFrom<&[u8]> for Chunk {
         if value.len() < 12 {
             Err(anyhow!("Invalid Chunk String {:?} : Too Short", value))
         } else {
-            let (l, r) = value.split_at(4);
+            let (len, rest) = value.split_at(4);
+            if bytes_to_u32(len) > rest.len() as u32 {
+                return Err(anyhow!("Invalid Chunk String {:?} : Too Short", value));
+            }
+            let (rest, _) = rest.split_at(bytes_to_u32(len) as usize + 8);
+            let (rest, crc) = rest.split_at(bytes_to_u32(len) as usize + 4);
 
-            let (r, c) = r.split_at(r.len() - 4);
-
-            let _crc = crc::Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(r);
-
-            if bytes_to_u32(c) != _crc {
+            let _crc = crc::Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(rest);
+            if bytes_to_u32(crc) != _crc {
                 Err(anyhow!(
                     "Invalid Chunk String {:?} : Wrong CRC {} , Should Be {}",
                     value,
-                    bytes_to_u32(c),
+                    bytes_to_u32(crc),
                     _crc
                 ))
             } else {
-                let (t, d) = r.split_at(4);
+                let (chunk_type, data) = rest.split_at(4);
 
                 Ok(Chunk {
-                    _length: bytes_to_u32(l),
-                    _type: ChunkType::try_from(<[u8; 4]>::try_from(t)?).unwrap(),
-                    _data: d.to_vec(),
+                    _length: bytes_to_u32(len),
+                    _type: ChunkType::try_from(<[u8; 4]>::try_from(chunk_type)?).unwrap(),
+                    _data: data.to_vec(),
                     _crc,
                 })
             }
@@ -86,7 +100,14 @@ fn bytes_to_u32(value: &[u8]) -> u32 {
         + ((value[2] as u32) << 8)
         + ((value[3] as u32) << 0)
 }
-
+fn u32_to_bytes(value: u32) -> [u8; 4] {
+    [
+        (value & 0xFF000000) as u8,
+        (value & 0x00FF0000) as u8,
+        (value & 0x0000FF00) as u8,
+        (value & 0x000000FF) as u8,
+    ]
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,6 +175,25 @@ mod tests {
             .collect();
 
         let chunk = Chunk::try_from(chunk_data.as_ref()).unwrap();
+
+        let chunk_string = chunk.data_as_string().unwrap();
+        let expected_chunk_string = String::from("This is where your secret message will be!");
+
+        assert_eq!(chunk.length(), 42);
+        assert_eq!(chunk.chunk_type().to_string(), String::from("RuSt"));
+        assert_eq!(chunk_string, expected_chunk_string);
+        assert_eq!(chunk.crc(), 2882656334);
+    }
+    #[test]
+    fn test_valid_chunk_from_bytes_str() {
+        let data_length: u32 = 42;
+        let chunk_type = "RuSt".as_bytes();
+        let message_bytes = "This is where your secret message will be!".as_bytes();
+        let crc: u32 = 2882656334;
+
+        let chunk_data: Vec<u8> = message_bytes.iter().copied().collect();
+
+        let chunk = Chunk::new(ChunkType::from_str("RuSt").unwrap(), chunk_data);
 
         let chunk_string = chunk.data_as_string().unwrap();
         let expected_chunk_string = String::from("This is where your secret message will be!");
