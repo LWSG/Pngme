@@ -61,7 +61,6 @@ impl Png {
     }
     fn as_bytes(&self) -> Vec<u8> {
         Png::STANDARD_HEADER
-            .to_vec()
             .iter()
             .cloned()
             .chain(self._chunks.iter().map(|c| c.as_bytes()).flatten())
@@ -71,7 +70,6 @@ impl Png {
 
 impl TryFrom<&[u8]> for Png {
     type Error = anyhow::Error;
-
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         let (sh, cks) = value.split_at(8);
         if !Png::header_is_valid(sh) {
@@ -86,14 +84,15 @@ impl TryFrom<&[u8]> for Png {
         if cks.len() == 0 {
             return Ok(Png { _chunks });
         }
-        let mut chunk_length = cks.len();
-        loop {
-            let (ck, cks) = cks.split_at(chunk_length);
-            let chunk = Chunk::try_from(ck)?;
-            chunk_length = chunk.length() as usize + 4;
-            if cks.len() == 0 {
+        let mut pos = 0;
+        while let (_, ck) = cks.split_at(pos) {
+            if ck.len() == 0 {
                 break;
             }
+            let chunk = Chunk::try_from(ck)?;
+            pos += chunk.length() as usize + 12;
+            _chunks.push(chunk);
+            //break;
         }
         Ok(Png { _chunks })
     }
@@ -159,9 +158,9 @@ mod tests {
             .copied()
             .collect();
 
-        let png = Png::try_from(bytes.as_ref());
+        let png = Png::try_from(bytes.as_ref()).unwrap();
 
-        assert!(png.is_ok());
+        //assert!(png.is_ok());
     }
 
     #[test]
